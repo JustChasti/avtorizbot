@@ -27,6 +27,7 @@ class User(Base):
     curretn_code = Column(String(256), nullable=False)
     code_time = Column(DateTime(timezone=False), default=datetime.now())
     get_count = Column(Integer, nullable=True)
+    success = Column(Integer, nullable=True)
 
 
 user = config.base_user
@@ -52,24 +53,28 @@ def find_user(name):
     session = Session()
     try:
         u = session.query(User).filter(User.name == name).one()
+        session.close()
         return u.send_count
     except Exception as e:
+        session.close()
         return 'this profile isnt in database'
 
 
-def get_email(name):
+def get_user_email(name):
     session = Session()
     try:
         u = session.query(User).filter(User.name == name).one()
+        session.close()
         return u.curretn_email
     except Exception as e:
+        session.close()
         return 'this profile isnt in database'
 
 
 def add_user(name, email, code):
     session = Session()
     try:
-        user = User(name=name, send_count=1, curretn_email=email, curretn_code=code, code_time=datetime.now(), get_count=0)
+        user = User(name=name, send_count=1, curretn_email=email, curretn_code=code, code_time=datetime.now(), get_count=0, success=0)
         session.add(user)
         session.commit()
     except Exception as e:
@@ -96,8 +101,41 @@ def change_code(name, code):
     upd.send_count += 1
     upd.get_count = 0
     upd.code_time=datetime.now()
+    session.add(upd)
     session.commit()
     session.close()
+
+
+def set_success(name):
+    print(name)
+    session = Session()
+    upd = session.query(User).filter(User.name == name).one()
+    upd.success = 1
+    session.add(upd)
+    session.commit()
+    session.close()
+
+
+def get_succes(name):
+    session = Session()
+    try:
+        u = session.query(User).filter(User.name == name).one()
+        session.close()
+        return u.success
+    except Exception as e:
+        session.close()
+        return 'this profile isnt in database'
+
+
+def get_email(email):
+    session = Session()
+    try:
+        u = session.query(User).filter(User.curretn_email == email).one()
+        session.close()
+        return 'this mail was used'
+    except Exception as e:
+        session.close()
+        return 'this profile isnt in database'
 
 
 def get_code(name):
@@ -121,4 +159,4 @@ def get_code(name):
 
 
 if __name__ == "__main__":
-    print(get_code('test1'))
+    pass

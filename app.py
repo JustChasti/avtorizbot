@@ -41,18 +41,42 @@ def resend_code():
     code = generate_code()
     if r <= 15:
         db.change_code(j_request['name'], code)
-        email = db.get_email(j_request['name'])
-        mailag.send_message(email, "Привет! Это бот авторизации. Код подтверждения авторизации: " + str(code))
+        email = db.get_user_email(j_request['name'])
+        print(mailag.send_message(email, "Привет! Это бот авторизации. Код подтверждения авторизации: " + str(code)))
         return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
     else:
         return json.dumps({'success': 'to many attempts'}), 420, {'ContentType': 'application/json'}
-    return jsonify(db.get_all())
 
 
 @app.route("/code/get/", methods=["GET"])
 def get_code():
     j_request = request.json
     return jsonify({'code': str(db.get_code(j_request['name']))})
+
+
+@app.route("/user/succes/", methods=["GET"])
+def get_succes():
+    j_request = request.json
+    return jsonify({'success': str(db.get_succes(j_request['name']))})
+
+
+@app.route("/user/email/", methods=["GET"])
+def get_email():
+    j_request = request.json
+    return jsonify({'email': str(db.get_email(j_request['email']))})
+
+
+@app.route("/user/getemail/", methods=["GET"])
+def get_user_email():
+    j_request = request.json
+    return jsonify({'name': str(db.get_user_email(j_request['name']))})
+
+
+@app.route("/user/succes/", methods=["PUT"])
+def set_succes():
+    j_request = request.json
+    db.set_success(j_request['name'])
+    return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
 
 
 if __name__ == "__main__":

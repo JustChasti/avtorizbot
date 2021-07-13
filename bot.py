@@ -43,31 +43,49 @@ def get_text_messages(message):
     global postadminflag
     global adminflag
     if mailflag == 1:
-        answer = requests.post(config.url + 'code/send/', data=json.dumps({'name': str(message.chat.id), 'email': message.text}), headers=config.headers).json()
+        answer = requests.get(config.url + 'user/succes/', data=json.dumps({'name': str(message.chat.id)}), headers=config.headers).json()
         print(answer)
-        print(message.text, 'email')
-        mailflag = 0
-        codeflag = 1
-        keyboard = types.InlineKeyboardMarkup()
-        email_button = types.InlineKeyboardButton(text='Изменить email', callback_data='email')
-        code_button = types.InlineKeyboardButton(text='Переслать код', callback_data='code')
-        keyboard.add(email_button)
-        keyboard.add(code_button)
-        bot.send_message(message.from_user.id, "Введите код или выберете один из вариантов", reply_markup=keyboard)
-    elif codeflag == 1:
-        answer = requests.get(config.url + 'code/get/', data=json.dumps({'name': str(message.chat.id)}), headers=config.headers).json()
-        print(answer)
-        print(message.text, 'code')
-        if answer['code'] == 'to many attempts':
-            bot.send_message(message.from_user.id, "слишком много попыток ввода")
-        elif answer['code'] == 'time is over':
-            bot.send_message(message.from_user.id, "время действия кода истекло - запросите новый")
-        elif answer['code'] == message.text:
-            bot.send_message(message.from_user.id, invite)
-            codeflag = 0
+        if answer['success'] == '1':
+            bot.send_message(message.from_user.id, "ссылка вам уже выдана")
         else:
-            bot.send_message(message.from_user.id, "вы ввели неверный код")
-            mailag.send_message(bad_email, 'попытка авторизации на почту: ' + db.get_email(str(message.chat.id)))
+            answer = requests.get(config.url + 'user/email/', data=json.dumps({'email': message.text}), headers=config.headers).json()
+            print(answer)
+            if answer['email'] == 'this mail was used':
+                bot.send_message(message.from_user.id, "ваш email был использован другим пользователем")
+            else:
+                answer = requests.post(config.url + 'code/send/', data=json.dumps({'name': str(message.chat.id), 'email': message.text}), headers=config.headers).json()
+                print(answer)
+                print(message.text, 'email')
+                mailflag = 0
+                codeflag = 1
+                keyboard = types.InlineKeyboardMarkup()
+                email_button = types.InlineKeyboardButton(text='Изменить email', callback_data='email')
+                code_button = types.InlineKeyboardButton(text='Переслать код', callback_data='code')
+                keyboard.add(email_button)
+                keyboard.add(code_button)
+                bot.send_message(message.from_user.id, "Введите код или выберете один из вариантов", reply_markup=keyboard)
+    elif codeflag == 1:
+        answer = requests.get(config.url + 'user/succes/', data=json.dumps({'name': str(message.chat.id)}), headers=config.headers).json()
+        print(answer)
+        if answer['success'] == '1':
+            bot.send_message(message.from_user.id, "ссылка вам уже выдана")
+        else:
+            answer = requests.get(config.url + 'code/get/', data=json.dumps({'name': str(message.chat.id)}), headers=config.headers).json()
+            print(answer)
+            print(message.text, 'code')
+            if answer['code'] == 'to many attempts':
+                bot.send_message(message.from_user.id, "слишком много попыток ввода")
+            elif answer['code'] == 'time is over':
+                bot.send_message(message.from_user.id, "время действия кода истекло - запросите новый")
+            elif answer['code'] == message.text:
+                bot.send_message(message.from_user.id, invite)
+                answer = requests.put(config.url + 'user/succes/', data=json.dumps({'name': str(message.chat.id)}), headers=config.headers)
+                print(answer)
+                codeflag = 0
+            else:
+                bot.send_message(message.from_user.id, "вы ввели неверный код")
+                answer = requests.get(config.url + 'user/getemail/', data=json.dumps({'name': str(message.chat.id)}), headers=config.headers).json()
+                mailag.send_message(bad_email, 'попытка авторизации на почту: ' + answer['name'])
     elif adminflag == 1:
         adminflag = 0
         if message.text == config.admin_pass:
@@ -89,17 +107,24 @@ def callback_worker(call):
     global mailflag
     global codeflag
     try:
-        if call.message:
-            if call.data == "email":
-                mailflag = 1
-                codeflag = 0
-                bot.send_message(call.message.chat.id, "Введите новый email")
-            if call.data == "code":
-                codeflag = 1
-                mailflag = 0
-                answer = requests.post(config.url + 'code/resend/', data=json.dumps({'name' :str(call.message.chat.id)}), headers=config.headers).json()
-                print(answer)
-                bot.send_message(call.message.chat.id, "Введите новый код")
+        answer = requests.get(config.url + 'user/succes/', data=json.dumps({'name': str(call.message.chat.id)}), headers=config.headers).json()
+        print(answer)
+        if answer['success'] == '1':
+            bot.send_message(call.message.chat.id, "вам уже выдан код")
+        else:
+            if call.message:
+                if call.data == "email":
+                    mailflag = 1
+                    codeflag = 0
+                    bot.send_message(call.message.chat.id, "Введите новый email")
+                if call.data == "code":
+                    codeflag = 1
+                    mailflag = 0
+                    try:
+                        requests.post(config.url + 'code/resend/', data=json.dumps({'name' :str(call.message.chat.id)}), headers=config.headers).json()
+                        bot.send_message(call.message.chat.id, "Введите новый код")
+                    except:
+                        bot.send_message(call.message.chat.id, "Превышен лимит отправки писем, попытайтесь снова через несколько минут")
     except Exception as e:
         print('err')
 
